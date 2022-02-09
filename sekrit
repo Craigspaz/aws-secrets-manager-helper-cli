@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+set -euo pipefail
+
+cmd=${1-help}
+
+case $cmd in
+    ls)
+        aws secretsmanager list-secrets --output text --query SecretList[].Name
+        ;;
+    get)
+        name=$2
+        aws secretsmanager get-secret-value --output text --query SecretString --secret-id "$name"
+        ;;
+    set)
+        name=$2
+        value=$3
+        aws secretsmanager put-secret-value --secret-id "$name" --secret-string "$value" >/dev/null 2>&1
+        aws secretsmanager create-secret --name "$name" --secret-string "$value" >/dev/null 2>&1
+        aws secretsmanager get-secret-value --output text --query SecretString --secret-id "$name"
+        ;;
+    rm)
+        name=$2
+        aws secretsmanager get-secret-value --output text --query SecretString --secret-id "$name"
+        aws secretsmanager delete-secret --secret-id "$name" >/dev/null
+        ;;
+    restore)
+        name=$2
+        aws secretsmanager restore-secret --secret-id "$name" >/dev/null
+        aws secretsmanager get-secret-value --output text --query SecretString --secret-id "$name"
+        ;;
+    *)
+        echo "Usage: $0 [ls|get <name>|set <name> <value>|rm <name>|restore <name>]" >&2
+        exit 1
+        ;;
+esac
